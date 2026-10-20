@@ -1,103 +1,53 @@
 # gotabiblioteken-hacs
 
-Home Assistant tooling for **library opening hours** from
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+[![Tests](https://github.com/sahuk/gotabiblioteken-hacs/actions/workflows/test.yml/badge.svg)](https://github.com/sahuk/gotabiblioteken-hacs/actions/workflows/test.yml)
+
+Home Assistant integration for **library opening hours** from
 [gotabiblioteken.se](https://www.gotabiblioteken.se/) (the Götabiblioteken
 consortium), served by the Axiell JSON API.
 
-Two ways to use it — pick one:
+Pick your favorite libraries from a dropdown and each one becomes an
+"opening hours today" sensor — aware of multiple shifts per day and of both
+service types (`Bemannat` / staffed and `Meröppet` / self-service).
 
-| | [Custom integration](#custom-integration-gui-recommended) | [Template blueprint](#template-blueprint-yaml-alternative) |
-|---|---|---|
-| Setup | GUI, no YAML | YAML (`configuration.yaml`) |
-| Pick libraries | multi-select dropdown | one `use_blueprint` per library |
-| Polls the API | itself | needs a separate REST sensor |
+## Installation
 
-The integration is the recommended path. The blueprint is kept as a
-YAML-only alternative (template blueprints can't be created from the GUI, which
-is why the integration exists).
+### Install with HACS (recommended)
 
----
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=sahuk&repository=gotabiblioteken-hacs&category=integration)
 
-## Custom integration (GUI, recommended)
+1. Click the button above to open this repository in HACS.
+   (Or add it by hand: HACS → ⋮ → **Custom repositories** →
+   `https://github.com/sahuk/gotabiblioteken-hacs`, category **Integration**.)
+2. Select **Download**.
+3. Restart Home Assistant.
 
-A proper config-flow integration: install once, then pick your favorite
-libraries from a dropdown. It polls the API itself (every 3 hours) and creates
-one "opening hours today" sensor per favorite. No YAML at all.
+### Install manually
 
-### Install
+1. Copy the `custom_components/gotabiblioteken/` directory into your
+   Home Assistant `<config>/custom_components/` directory.
+2. Restart Home Assistant.
 
-**Via HACS (custom repository):**
+## Configuration
 
-1. HACS → ⋮ → **Custom repositories**.
-2. Add `https://github.com/sahuk/gotabiblioteken-hacs` with category **Integration**.
-3. Install **Götabiblioteken opening hours**, then restart Home Assistant.
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=gotabiblioteken)
 
-**Manually:** copy `custom_components/gotabiblioteken/` into your
-`<config>/custom_components/` directory and restart.
+Go to **Settings → Devices & services → + Add integration** and search for
+**Götabiblioteken** (or use the button above). Then:
 
-### Configure
+1. Select your favorite libraries in the multi-select (all ~46 branches are
+   fetched live from the API).
+2. Choose whether **Meröppet** (self-service) counts as open.
+3. Submit.
 
-**Settings → Devices & services → + Add integration → Götabiblioteken.**
-Select your favorite libraries in the multi-select, choose whether Meröppet
-(self-service) counts as open, and submit. Change favorites any time via the
-integration's **Configure** button.
-
-Each favorite becomes a `sensor.oppettider_<library>` entity.
-
----
-
-## Template blueprint (YAML, alternative)
-
-```
-blueprints/template/gotabiblioteken/opening_hours.yaml   # the reusable sensor recipe
-packages/gotabiblioteken_opening_hours.yaml              # REST sensor that polls the API
-```
-
-Because a template blueprint can't make HTTP requests, this path has two parts:
-a REST sensor (installed once) that stores the API payload in a `dates`
-attribute, and the blueprint that turns it into a per-library sensor.
-
-### 1. Add the REST source sensor
-
-Enable packages (once) in `configuration.yaml`:
-
-```yaml
-homeassistant:
-  packages: !include_dir_named packages
-```
-
-Copy `packages/gotabiblioteken_opening_hours.yaml` into `<config>/packages/`
-and restart. You'll get `sensor.gotabiblioteken_oppettider_radata`.
-
-### 2. Import the blueprint
-
-**Settings → Automations & scenes → Blueprints → Import blueprint**, and paste:
-
-```
-https://github.com/sahuk/gotabiblioteken-hacs/blob/master/blueprints/template/gotabiblioteken/opening_hours.yaml
-```
-
-### 3. Create one sensor per favorite
-
-```yaml
-template:
-  - use_blueprint:
-      path: gotabiblioteken/opening_hours.yaml
-      input:
-        branch_name: Linköpings huvudbibliotek
-    name: Öppettider Linköpings huvudbibliotek
-    unique_id: oppettider_linkopings_huvudbibliotek
-```
-
-`branch_name` must match a name from [the list below](#branch-names).
-
----
+Each favorite becomes a `sensor.oppettider_<library>` entity. Change your
+favorites any time with the integration's **Configure** button.
 
 ## What each sensor gives you
 
-Both paths produce the same thing. State: today's staffed hours as a short
-string, e.g. `10:00–13:00, 14:00–19:00` (or the self-service hours if the
-branch is self-service only, or `Stängt`).
+State: today's staffed hours as a short string, e.g. `10:00–13:00, 14:00–19:00`
+(or the self-service hours if the branch is self-service only, or `Stängt`).
 
 Attributes:
 
@@ -145,54 +95,6 @@ entities:
   - sensor.oppettider_motala_bibliotek
 ```
 
-## Branch names
-
-Only needed for the blueprint path (the integration shows these in a dropdown).
-Matching ignores surrounding spaces and case:
-
-- Berga bibliotek
-- Bibliotek Agora
-- Borensbergs bibliotek
-- Borghamns bibliotek
-- Boxholms bibliotek
-- Ekholmens bibliotek
-- Eneby bibliotek
-- Finspångs huvudbibliotek
-- Hageby bibliotek
-- Horns bibliotek
-- Johannelunds bibliotek
-- Kisa bibliotek
-- Krokeks bibliotek
-- Lambohovs bibliotek
-- Linghems bibliotek
-- Linköpings huvudbibliotek
-- Ljungsbro bibliotek
-- Mantorps bibliotek
-- Mjölby bibliotek
-- Mogata bibliotek
-- Motala bibliotek
-- Norrköpings stadsbibliotek
-- Rejmyre bibliotek
-- Ringarums bibliotek
-- Ryds bibliotek
-- Skänninge bibliotek
-- Skärblacka bibliotek
-- Stinsen
-- Sturefors bibliotek
-- Tjällmo bibliotek
-- Tranås stadsbibliotek
-- Vadstena bibliotek
-- Valdemarsviks bibliotek
-- Väderstads bibliotek
-- Ydre kommunbibliotek
-- Åtvidabergs bibliotek
-- Ödeshögs bibliotek
-- Östra Husby bibliotek
-- Östra Ryds bibliotek
-
-(Some branches are omitted by the API on days they're closed, so a single day
-shows ~40; the full roster is ~46.)
-
 ## API notes
 
 ```
@@ -218,8 +120,10 @@ https://api.axiell.com/openinghours/customers/637ce8087143292d469b8c9b/openingho
 }
 ```
 
-An empty `openingHours` array means the branch is closed that day. The customer
-id `637ce8087143292d469b8c9b` is Götabiblioteken's.
+An empty `openingHours` array means the branch is closed that day. Branches are
+omitted entirely on days they are closed, so a single day lists ~40 while the
+full roster is ~46. The customer id `637ce8087143292d469b8c9b` is
+Götabiblioteken's.
 
 ## Development
 

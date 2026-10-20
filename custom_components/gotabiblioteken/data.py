@@ -1,8 +1,8 @@
 """Pure opening-hours computation.
 
-No Home Assistant imports on purpose: this module is unit-testable on its own
-and holds the same logic the YAML blueprint used (merge duplicate branch
-entries, de-duplicate identical shifts, split staffed vs self-service).
+No Home Assistant imports on purpose: this module is unit-testable on its own.
+Merges duplicate branch entries, de-duplicates identical shifts, and splits
+staffed from self-service hours.
 """
 
 from __future__ import annotations
