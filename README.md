@@ -49,8 +49,11 @@ a `sensor.gotabiblioteken_oppettider_radata` entity whose attributes include a
 ### 2. Import the blueprint
 
 In Home Assistant: **Settings → Automations & scenes → Blueprints → Import
-blueprint**, and paste the raw URL of
-`blueprints/template/gotabiblioteken/opening_hours.yaml` from your fork.
+blueprint**, and paste:
+
+```
+https://github.com/sahuk/blueprints-ha/blob/master/blueprints/template/gotabiblioteken/opening_hours.yaml
+```
 
 Or drop the file manually into
 `<config>/blueprints/template/gotabiblioteken/opening_hours.yaml`.
