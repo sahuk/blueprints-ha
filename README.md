@@ -23,7 +23,7 @@ entity — **none of these can make an HTTP request**. So the integration is two
 halves:
 
 1. **`packages/gotabiblioteken_opening_hours.yaml`** — a `rest` sensor that
-   polls the API once an hour and stores the whole response in a `dates`
+   polls the API every three hours and stores the whole response in a `dates`
    attribute. This is the "subscribe to the API" half (installed once).
 2. **`blueprints/template/gotabiblioteken/opening_hours.yaml`** — the reusable
    blueprint. Instantiate it **once per favorite library**; each instance reads

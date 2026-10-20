@@ -22,7 +22,7 @@
 rest:
   - resource: "https://api.axiell.com/openinghours/customers/637ce8087143292d469b8c9b/openinghours?locale=sv_SE&daysFromNow=0&numOfDays=2"
     method: GET
-    scan_interval: 3600
+    scan_interval: 10800
     timeout: 20
     headers:
       Accept: "application/json"
