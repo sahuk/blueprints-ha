@@ -220,3 +220,15 @@ https://api.axiell.com/openinghours/customers/637ce8087143292d469b8c9b/openingho
 
 An empty `openingHours` array means the branch is closed that day. The customer
 id `637ce8087143292d469b8c9b` is Götabiblioteken's.
+
+## Development
+
+```bash
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements-test.txt
+./.venv/bin/pytest
+```
+
+Tests cover the pure opening-hours logic, the config/options flow, and
+end-to-end entity setup under a real Home Assistant instance, and run in CI
+(`.github/workflows/test.yml`) on every push and pull request.
