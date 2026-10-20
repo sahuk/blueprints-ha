@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Götabiblioteken",
+        "description": "Select the libraries you want as favorites. Each one becomes an \"opening hours today\" sensor.",
+        "data": {
+          "branches": "Favorite libraries",
+          "include_self_service": "Count Meröppet (self-service) as open"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Götabiblioteken is already set up.",
+      "cannot_connect": "Could not reach the opening-hours API."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Götabiblioteken",
+        "description": "Update your favorite libraries.",
+        "data": {
+          "branches": "Favorite libraries",
+          "include_self_service": "Count Meröppet (self-service) as open"
+        }
+      }
+    }
+  }
+}

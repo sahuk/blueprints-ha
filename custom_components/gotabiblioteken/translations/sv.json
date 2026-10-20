@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Götabiblioteken",
+        "description": "Välj de bibliotek du vill ha som favoriter. Varje bibliotek blir en sensor med dagens öppettider.",
+        "data": {
+          "branches": "Favoritbibliotek",
+          "include_self_service": "Räkna meröppet som öppet"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Götabiblioteken är redan konfigurerat.",
+      "cannot_connect": "Kunde inte nå API:et för öppettider."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Götabiblioteken",
+        "description": "Uppdatera dina favoritbibliotek.",
+        "data": {
+          "branches": "Favoritbibliotek",
+          "include_self_service": "Räkna meröppet som öppet"
+        }
+      }
+    }
+  }
+}

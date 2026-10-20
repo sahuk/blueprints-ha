@@ -1,36 +1,61 @@
 # blueprints-ha
 
-Home Assistant blueprints. A monorepo that can hold several blueprints over
-time; the first one covers **library opening hours for
-[gotabiblioteken.se](https://www.gotabiblioteken.se/)** (the Götabiblioteken
+Home Assistant tooling for **library opening hours** from
+[gotabiblioteken.se](https://www.gotabiblioteken.se/) (the Götabiblioteken
 consortium), served by the Axiell JSON API.
 
+Two ways to use it — pick one:
+
+| | [Custom integration](#custom-integration-gui-recommended) | [Template blueprint](#template-blueprint-yaml-alternative) |
+|---|---|---|
+| Setup | GUI, no YAML | YAML (`configuration.yaml`) |
+| Pick libraries | multi-select dropdown | one `use_blueprint` per library |
+| Polls the API | itself | needs a separate REST sensor |
+
+The integration is the recommended path. The blueprint is kept as a
+YAML-only alternative (template blueprints can't be created from the GUI, which
+is why the integration exists).
+
+---
+
+## Custom integration (GUI, recommended)
+
+A proper config-flow integration: install once, then pick your favorite
+libraries from a dropdown. It polls the API itself (every 3 hours) and creates
+one "opening hours today" sensor per favorite. No YAML at all.
+
+### Install
+
+**Via HACS (custom repository):**
+
+1. HACS → ⋮ → **Custom repositories**.
+2. Add `https://github.com/sahuk/blueprints-ha` with category **Integration**.
+3. Install **Götabiblioteken opening hours**, then restart Home Assistant.
+
+**Manually:** copy `custom_components/gotabiblioteken/` into your
+`<config>/custom_components/` directory and restart.
+
+### Configure
+
+**Settings → Devices & services → + Add integration → Götabiblioteken.**
+Select your favorite libraries in the multi-select, choose whether Meröppet
+(self-service) counts as open, and submit. Change favorites any time via the
+integration's **Configure** button.
+
+Each favorite becomes a `sensor.oppettider_<library>` entity.
+
+---
+
+## Template blueprint (YAML, alternative)
+
 ```
-blueprints-ha/
-├── blueprints/
-│   └── template/
-│       └── gotabiblioteken/
-│           └── opening_hours.yaml     # the reusable per-library sensor blueprint
-├── packages/
-│   └── gotabiblioteken_opening_hours.yaml  # REST sensor that polls the API
-└── README.md
+blueprints/template/gotabiblioteken/opening_hours.yaml   # the reusable sensor recipe
+packages/gotabiblioteken_opening_hours.yaml              # REST sensor that polls the API
 ```
 
-## How it fits together
-
-A Home Assistant blueprint can only be an automation, a script, or a template
-entity — **none of these can make an HTTP request**. So the integration is two
-halves:
-
-1. **`packages/gotabiblioteken_opening_hours.yaml`** — a `rest` sensor that
-   polls the API every three hours and stores the whole response in a `dates`
-   attribute. This is the "subscribe to the API" half (installed once).
-2. **`blueprints/template/gotabiblioteken/opening_hours.yaml`** — the reusable
-   blueprint. Instantiate it **once per favorite library**; each instance reads
-   the `dates` attribute and produces a tidy "opening hours today" sensor for
-   that branch.
-
-## Installation
+Because a template blueprint can't make HTTP requests, this path has two parts:
+a REST sensor (installed once) that stores the API payload in a `dates`
+attribute, and the blueprint that turns it into a per-library sensor.
 
 ### 1. Add the REST source sensor
 
@@ -41,27 +66,18 @@ homeassistant:
   packages: !include_dir_named packages
 ```
 
-Copy `packages/gotabiblioteken_opening_hours.yaml` into your
-`<config>/packages/` directory and restart Home Assistant. You should now have
-a `sensor.gotabiblioteken_oppettider_radata` entity whose attributes include a
-`dates` list.
+Copy `packages/gotabiblioteken_opening_hours.yaml` into `<config>/packages/`
+and restart. You'll get `sensor.gotabiblioteken_oppettider_radata`.
 
 ### 2. Import the blueprint
 
-In Home Assistant: **Settings → Automations & scenes → Blueprints → Import
-blueprint**, and paste:
+**Settings → Automations & scenes → Blueprints → Import blueprint**, and paste:
 
 ```
 https://github.com/sahuk/blueprints-ha/blob/master/blueprints/template/gotabiblioteken/opening_hours.yaml
 ```
 
-Or drop the file manually into
-`<config>/blueprints/template/gotabiblioteken/opening_hours.yaml`.
-
-### 3. Pick your favorites (one sensor per library)
-
-Create a template entity from the blueprint for **each** library you care
-about. In `configuration.yaml` (or a package):
+### 3. Create one sensor per favorite
 
 ```yaml
 template:
@@ -71,34 +87,25 @@ template:
         branch_name: Linköpings huvudbibliotek
     name: Öppettider Linköpings huvudbibliotek
     unique_id: oppettider_linkopings_huvudbibliotek
-
-  - use_blueprint:
-      path: gotabiblioteken/opening_hours.yaml
-      input:
-        branch_name: Motala bibliotek
-    name: Öppettider Motala bibliotek
-    unique_id: oppettider_motala_bibliotek
 ```
 
-(The same thing can be done entirely in the UI via **Settings → Devices &
-services → Helpers → Create helper → Template**, choosing this blueprint.)
+`branch_name` must match a name from [the list below](#branch-names).
 
-`source_sensor` defaults to `sensor.gotabiblioteken_oppettider_radata`, so you
-only need to set `branch_name`. Set `include_self_service: false` on an
-instance if you don't want Meröppet hours to count as "open".
+---
 
 ## What each sensor gives you
 
-State: today's staffed hours as a short string, e.g. `10:00–13:00, 14:00–19:00`
-(or the self-service hours if the branch is self-service only, or `Stängt`).
+Both paths produce the same thing. State: today's staffed hours as a short
+string, e.g. `10:00–13:00, 14:00–19:00` (or the self-service hours if the
+branch is self-service only, or `Stängt`).
 
 Attributes:
 
 | Attribute              | Example                                             |
 | ---------------------- | --------------------------------------------------- |
 | `branch`               | `Linköpings huvudbibliotek`                         |
-| `date` / `date_label`  | `2026-10-20` / `Måndag 20 oktober`                  |
-| `weekday`              | `Måndag`                                            |
+| `date` / `date_label`  | `2026-10-20` / `Tisdag 20 oktober`                  |
+| `weekday`              | `Tisdag`                                            |
 | `open_now`             | `true`                                              |
 | `status`               | `staffed` \| `self_service` \| `closed`             |
 | `staffed_summary`      | `10:00–13:00, 14:00–19:00`                          |
@@ -106,9 +113,10 @@ Attributes:
 | `shifts`               | list of `{type, service_type, info, from, to}`      |
 | `hours_markdown`       | pre-formatted block for a Markdown card             |
 
-`shifts` is the structured source of truth — it keeps **every shift** for the
-day and distinguishes `Bemannat` (staffed) from `Meröppet` (self-service), so
-split days and mixed service types are all preserved.
+`shifts` keeps **every shift** for the day and distinguishes `Bemannat`
+(staffed) from `Meröppet` (self-service), so split days and mixed service types
+are all preserved. `open_now` recomputes locally every minute; the API itself
+is only polled every 3 hours.
 
 ## Dashboard cards
 
@@ -127,13 +135,6 @@ content: |
   {% endfor %}
 ```
 
-**A single library:**
-
-```yaml
-type: markdown
-content: "{{ state_attr('sensor.oppettider_motala_bibliotek', 'hours_markdown') }}"
-```
-
 **At a glance** (built-in Entities card — state shows today's hours):
 
 ```yaml
@@ -146,8 +147,8 @@ entities:
 
 ## Branch names
 
-Use these exactly as `branch_name` (matching ignores surrounding spaces and
-case):
+Only needed for the blueprint path (the integration shows these in a dropdown).
+Matching ignores surrounding spaces and case:
 
 - Berga bibliotek
 - Bibliotek Agora
@@ -189,15 +190,14 @@ case):
 - Östra Husby bibliotek
 - Östra Ryds bibliotek
 
-## API notes
+(Some branches are omitted by the API on days they're closed, so a single day
+shows ~40; the full roster is ~46.)
 
-Endpoint:
+## API notes
 
 ```
 https://api.axiell.com/openinghours/customers/637ce8087143292d469b8c9b/openinghours?locale=sv_SE&daysFromNow=0&numOfDays=2
 ```
-
-Response shape:
 
 ```json
 {
@@ -218,4 +218,5 @@ Response shape:
 }
 ```
 
-An empty `openingHours` array means the branch is closed that day.
+An empty `openingHours` array means the branch is closed that day. The customer
+id `637ce8087143292d469b8c9b` is Götabiblioteken's.
