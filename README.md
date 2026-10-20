@@ -1,4 +1,4 @@
-# blueprints-ha
+# gotabiblioteken-hacs
 
 Home Assistant tooling for **library opening hours** from
 [gotabiblioteken.se](https://www.gotabiblioteken.se/) (the Götabiblioteken
@@ -29,7 +29,7 @@ one "opening hours today" sensor per favorite. No YAML at all.
 **Via HACS (custom repository):**
 
 1. HACS → ⋮ → **Custom repositories**.
-2. Add `https://github.com/sahuk/blueprints-ha` with category **Integration**.
+2. Add `https://github.com/sahuk/gotabiblioteken-hacs` with category **Integration**.
 3. Install **Götabiblioteken opening hours**, then restart Home Assistant.
 
 **Manually:** copy `custom_components/gotabiblioteken/` into your
@@ -74,7 +74,7 @@ and restart. You'll get `sensor.gotabiblioteken_oppettider_radata`.
 **Settings → Automations & scenes → Blueprints → Import blueprint**, and paste:
 
 ```
-https://github.com/sahuk/blueprints-ha/blob/master/blueprints/template/gotabiblioteken/opening_hours.yaml
+https://github.com/sahuk/gotabiblioteken-hacs/blob/master/blueprints/template/gotabiblioteken/opening_hours.yaml
 ```
 
 ### 3. Create one sensor per favorite

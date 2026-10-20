@@ -3,10 +3,10 @@
   "name": "Götabiblioteken opening hours",
   "codeowners": ["@sahuk"],
   "config_flow": true,
-  "documentation": "https://github.com/sahuk/blueprints-ha",
+  "documentation": "https://github.com/sahuk/gotabiblioteken-hacs",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/sahuk/blueprints-ha/issues",
+  "issue_tracker": "https://github.com/sahuk/gotabiblioteken-hacs/issues",
   "requirements": [],
   "version": "1.0.0"
 }
