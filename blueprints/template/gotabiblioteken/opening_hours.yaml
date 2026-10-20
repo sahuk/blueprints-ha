@@ -1,0 +1,153 @@
+blueprint:
+  name: Götabiblioteken – Opening hours (per library)
+  description: >
+    Creates one "opening hours today" sensor for a single Götabiblioteken
+    library branch, based on the Axiell opening-hours JSON API.
+
+    Instantiate this blueprint once per library you want as a "favorite" –
+    each instance becomes its own sensor you can drop straight onto a
+    dashboard (see the README for a ready-made Markdown card).
+
+    The sensor understands multiple shifts per day and multiple service types
+    (Bemannat / staffed and Meröppet / self-service). Today's full schedule is
+    exposed in the `shifts` attribute, with human-friendly summaries in
+    `staffed_summary`, `self_service_summary` and `hours_markdown`.
+
+    Requires the companion REST sensor that polls the API and exposes its
+    `dates` structure as an attribute – see
+    packages/gotabiblioteken_opening_hours.yaml.
+  domain: template
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    source_sensor:
+      name: Opening-hours source sensor
+      description: >
+        The REST sensor that exposes the API's `dates` attribute
+        (default: sensor.gotabiblioteken_oppettider_radata).
+      default: sensor.gotabiblioteken_oppettider_radata
+      selector:
+        entity:
+          domain: sensor
+    branch_name:
+      name: Library branch
+      description: >
+        Exact branch name as returned by the API. Matching ignores surrounding
+        whitespace and is case-insensitive. See the README for the full list,
+        e.g. "Linköpings huvudbibliotek", "Motala bibliotek", "Norrköpings
+        stadsbibliotek".
+      selector:
+        text: {}
+    include_self_service:
+      name: Count Meröppet (self-service) as open
+      description: >
+        If enabled, `open_now` is true during unstaffed self-service hours too.
+        Only affects `open_now`/`status`; the detailed attributes always list
+        both service types regardless of this setting.
+      default: true
+      selector:
+        boolean: {}
+
+triggers:
+  # Re-evaluate every minute so open_now and the "today" rollover stay current.
+  - trigger: time_pattern
+    minutes: "/1"
+  # Re-evaluate immediately when the API data refreshes.
+  - trigger: state
+    entity_id: !input source_sensor
+  # And once on startup.
+  - trigger: homeassistant
+    event: start
+
+variables:
+  source_sensor: !input source_sensor
+  branch_name: !input branch_name
+  include_self_service: !input include_self_service
+  norm_branch: "{{ branch_name | trim | lower }}"
+  today: "{{ now().strftime('%Y-%m-%d') }}"
+  now_hm: "{{ now().strftime('%H:%M') }}"
+  date_label: >-
+    {% set wd = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'] %}
+    {% set mo = ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'] %}
+    {{ wd[now().isoweekday() - 1] ~ ' ' ~ now().day ~ ' ' ~ mo[now().month - 1] }}
+  weekday: >-
+    {{ ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'][now().isoweekday() - 1] }}
+  all_dates: "{{ state_attr(source_sensor, 'dates') or [] }}"
+  today_entry: >-
+    {% set ns = namespace(e={}) %}
+    {% for d in all_dates if d.date == today %}{% set ns.e = d %}{% endfor %}
+    {{ ns.e }}
+  # Merge the opening hours of every branch entry that matches the name
+  # (the API sometimes lists a branch more than once), de-duplicating
+  # identical shifts so a doubled entry doesn't show up twice.
+  intervals: >-
+    {% set ns = namespace(items=[], seen=[]) %}
+    {% for b in today_entry.get('branches', []) if (b.branchName | trim | lower) == norm_branch %}
+    {% for i in b.openingHours %}
+    {% set key = [i.serviceType, i['from'], i['to'], i.info] %}
+    {% if key not in ns.seen %}
+    {% set ns.seen = ns.seen + [key] %}
+    {% set ns.items = ns.items + [i] %}
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+    {{ ns.items }}
+  staffed: "{{ intervals | selectattr('serviceType', 'equalto', 'Staffed') | list }}"
+  self_service: "{{ intervals | selectattr('serviceType', 'equalto', 'SelfService') | list }}"
+  staffed_summary: >-
+    {% set ns = namespace(p=[]) %}
+    {% for i in staffed %}{% set ns.p = ns.p + [i['from'] ~ '–' ~ i['to']] %}{% endfor %}
+    {{ ns.p | join(', ') if ns.p else 'Stängt' }}
+  self_service_summary: >-
+    {% set ns = namespace(p=[]) %}
+    {% for i in self_service %}{% set ns.p = ns.p + [i['from'] ~ '–' ~ i['to']] %}{% endfor %}
+    {{ ns.p | join(', ') if ns.p else 'Stängt' }}
+  staffed_now: >-
+    {% set ns = namespace(v=false) %}
+    {% for i in staffed if i['from'] <= now_hm < i['to'] %}{% set ns.v = true %}{% endfor %}
+    {{ ns.v }}
+  self_service_now: >-
+    {% set ns = namespace(v=false) %}
+    {% for i in self_service if i['from'] <= now_hm < i['to'] %}{% set ns.v = true %}{% endfor %}
+    {{ ns.v }}
+  open_now: "{{ staffed_now or (include_self_service and self_service_now) }}"
+  status: "{{ 'staffed' if staffed_now else ('self_service' if self_service_now else 'closed') }}"
+  shifts: >-
+    {% set ns = namespace(out=[]) %}
+    {% for i in intervals %}
+    {% set ns.out = ns.out + [{
+      'type': ('Bemannat' if i.serviceType == 'Staffed' else 'Meröppet'),
+      'service_type': i.serviceType,
+      'info': i.info,
+      'from': i['from'],
+      'to': i['to']
+    }] %}
+    {% endfor %}
+    {{ ns.out }}
+  hours_markdown: >-
+    {% set ns = namespace(l=['**' ~ (branch_name | trim) ~ '** — ' ~ date_label]) %}
+    {% if staffed_summary != 'Stängt' %}{% set ns.l = ns.l + ['Bemannat: ' ~ staffed_summary] %}{% endif %}
+    {% if self_service_summary != 'Stängt' %}{% set ns.l = ns.l + ['Meröppet: ' ~ self_service_summary] %}{% endif %}
+    {% if staffed_summary == 'Stängt' and self_service_summary == 'Stängt' %}{% set ns.l = ns.l + ['Stängt idag'] %}{% endif %}
+    {{ ns.l | join('  \n') }}
+
+sensor:
+  state: >-
+    {{ staffed_summary if staffed | count > 0
+       else (self_service_summary if self_service | count > 0 else 'Stängt') }}
+  icon: "{{ 'mdi:door-open' if open_now else 'mdi:door-closed' }}"
+  availability: >-
+    {{ states(source_sensor) not in ('unavailable', 'unknown')
+       and (all_dates | count > 0) }}
+  attributes:
+    branch: "{{ branch_name | trim }}"
+    date: "{{ today }}"
+    weekday: "{{ weekday }}"
+    date_label: "{{ date_label }}"
+    open_now: "{{ open_now }}"
+    status: "{{ status }}"
+    staffed_summary: "{{ staffed_summary }}"
+    self_service_summary: "{{ self_service_summary }}"
+    shifts: "{{ shifts }}"
+    hours_markdown: "{{ hours_markdown }}"
+    include_self_service: "{{ include_self_service }}"
